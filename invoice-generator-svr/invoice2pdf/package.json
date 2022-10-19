@@ -8,11 +8,11 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "axios":  ">=0.21.1",
-    "pdfkit": "0.13.0",
-    "@aws/dynamodb-data-mapper":"0.7.3",
-    "@aws-sdk/client-dynamodb":"3.188.0",
-    "uuid":"9.0.0"
+    "axios":  "^0.21.1",
+    "pdfkit": "^0.13.0",
+    "@aws-sdk/client-dynamodb":"^3.188.0",
+    "@aws-sdk/lib-dynamodb":"^3.188.0",
+    "uuid":"^9.0.0"
   },
   "scripts": {
     "test": "mocha tests/unit/"
