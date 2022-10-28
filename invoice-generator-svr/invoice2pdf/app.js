@@ -1,10 +1,6 @@
-// const axios = require('axios')
-// const url = 'http://checkip.amazonaws.com/';
-
-
 const PDFDoc = require('./gen-invoice-pdf.js');
-
-const User = require("./User")
+const User = require("./User");
+const Utility = require('./utils.js');
 //const invoiceData = require('./invoiceData.js');
 
 /**
@@ -19,7 +15,7 @@ const User = require("./User")
  * @returns {Object} object - API Gateway Lambda Proxy Output Format
  * 
  */
-function getRequestObj(event)
+function getRouteObj(event)
 {
     let rawPath = event.rawPath;
     let method = event.routeKey.split(" ")[0];
@@ -38,89 +34,183 @@ function getRequestObj(event)
  //const handler = async (event, context) => {
   exports.lambdaHandler = async (event, context) => {
     
-    /*return {
-        staus: 200,
-        message: "event ="+JSON.stringify(event)
-    }*/
     console.log(`rawPath=${event.rawPath}`);
-    console.log(`rawQueryString=${event.rawQueryString}`);
-    //console.log(`event.body=${JSON.stringify(event.body)}`);
+    //console.log(`rawQueryString=${event.rawQueryString}`);
+    const routeObj = getRouteObj(event);
+ 
+    console.log(`routeObj=${JSON.stringify(routeObj)}`);
    
-    const requestObj = getRequestObj(event);
-
-    console.log(`requestObj=${JSON.stringify(requestObj)}`);
-  /*  return  {
-        staus: 200,
-        message: "requestObj ="+JSON.stringify(requestObj)
-    }*/
-    
     try{
-            if(requestObj.method === "POST") 
-            {   if(requestObj.resource === 'getpdf')
-                {
-                    console.log("start calling PDFDoc")
-                    return await PDFDoc(JSON.parse(event.body));
-                }
-                else if(requestObj.resource === 'login')
-                {
-                    let param = JSON.parse(event.body)
-                    return await User.checkPassword(param.user_name, param.password)
-                }
-            }
-            else if(requestObj.method === "GET") 
+            let reqData = null;
+            let user_name = ""
+            let email = ""
+            if(event.body !== "")
             {
-                if(requestObj.resource === 'user')
-                {
-                    if(requestObj.id !== "")
-                    {
-                        if(requestObj.subResource === "")
-                        {
-                            return await User.getUserByUserName(requestObj.id);
-                        }
-                        else if(requestObj.subResource === "clients") //won't check subid
-                        {
-                             //get all clients   
-                             return await User.getCients(requestObj.id)
-                        }
-                        else if(requestObj.subResource === "client" &&requestObj.subID !=="" )
-                        {
-                            //get one certain client
-                        }
-                    }
-                    
-                }
+                reqData = JSON.parse(event.body);
             }
-            else if(requestObj.method === "PUT") 
+            //console.log(`event.body = ${event.body}`)
+            if(reqData.token !== undefined && reqData.token !== "")
             {
-                if(requestObj.resource === 'user')
-                {
-                    if(requestObj.id !== "")
-                    {
-                        if(requestObj.subResource === "")
-                        {
-                            console.log("in handler: event.body="+JSON.stringify(event.body));
-                            return await User.updateUser(JSON.parse(event.body));
-                        }
-                        else
-                        {
+              let decryped = Utility.decodeTokenToData(reqData.token);
+              user_name = decryped.user_name;
+              email = decryped.email;
 
-                        }
+              if(user_name === "" || email === "")
+              {
+                    return  {
+                        statusCode: 501,
+                        body:JSON.stringify({message:"Token Invalid"})
                     }
+              }
+            }
+            
+           // console.log(`user_name=${user_name}, email=${email}`)
+            if(routeObj.method === "POST") 
+            {  
+                if(routeObj.resource === 'user')
+                {
+                    return await User.getUserByUserName(user_name);
+                }
+
+                if(routeObj.resource === 'getpdf')
+                {
+                    return await PDFDoc(reqData);
+                }
+                
+                if(routeObj.resource === 'login')
+                {   /*no token need in checkpassord*/
+                    return await User.checkPassword(reqData.user_name, reqData.password)
+                }
+                
+                if(routeObj.resource === 'loginbytoken')
+                {
+                    //to check user_name and email in DB
+                    return await User.checkPrimaryKey(user_name, email);
+                }
+
+                if(routeObj.resource === "sendvemail")
+                {
+                    return await User.sendVefificationEmail(user_name,reqData.email)
+                }
+
+                if(routeObj.resource === "verifyemail")
+                {
+                    return await User.verifyEmail(reqData.vetoken)
+                }
+                if(routeObj.resource === "sendtemppass")
+                {
+                    return await User.sendTempPassword(reqData.email);
                 }
             }
-            else
+            
+            if(routeObj.method === "GET") 
             {
-                return  {
-                    stausCode: 500,
-                    message: "invalid request:"+event.rawPath
+
+                if(routeObj.resource === "clients") 
+                {
+                    //get all clients   
+                    return await User.getClients(user_name)
+                }
+                     
+            }
+            
+            if(routeObj.method === "PUT") 
+            {
+                if(routeObj.resource === 'basics')
+                {
+                    return await User.updateBasics({
+                        user_name:user_name,
+                        email:email,
+                        basics:reqData.basics});
+                }
+
+                if(routeObj.resource === "newclient")
+                {
+                    return await User.addClient({
+                        user_name:user_name,
+                        email:email,
+                        client:reqData.client});
+                }
+
+                if(routeObj.resource === "newpayee")
+                {
+                    return await User.addPayee({
+                        user_name:user_name,
+                        email:email,
+                        payee:reqData.payee});
+                }
+                
+                if(routeObj.resource === "client")
+                {
+                    return await User.updateClient({
+                        user_name:user_name,
+                        email: email,
+                        client:reqData.client})
+                }
+
+                if(routeObj.resource === "payee")
+                {
+                    //updating a payee                            
+                    return await User.updatePayee({
+                        user_name:user_name,
+                        email:email,
+                        payee:reqData.payee })
+                }
+
+                if(routeObj.resource === 'newuser')
+                {
+                    return await User.addUser(reqData);
+                }
+
+                if(routeObj.resource === 'password')
+                {
+                    return await User.changePassword({...reqData,user_name:user_name,email:email})
+                }
+
+                if(routeObj.resource === 'email')
+                {
+                    return await User.changeEmail({
+                        user_name:user_name,
+                        email: email,
+                        new_email:reqData.new_email})
                 }
             }
-    }catch(err)
+            
+            if(routeObj.method === "DELETE")
+            {
+                if(routeObj.resource === 'client' && routeObj.id !== "")
+                {
+                    //delete a client
+                    return await User.deleteClient({
+                        user_name:user_name,
+                        email:email,
+                        client_id:routeObj.id})                    
+                }
+
+                if(routeObj.resource === 'payee' && routeObj.id !== "")
+                {
+                    //delete a client
+                    return await User.deletePayee({
+                        user_name:user_name,
+                        email:email,
+                        payee_id:routeObj.id})                    
+                }
+            }
+    }
+    catch(err)
     {
         return  {
-            stausCode: 500,
-            message: "Promise Rejected:"+err
+            statusCode: 510,
+            body:JSON.stringify({message:"Promise Rejected:"+err})
         }
+    }
+
+   
+    return {
+        statusCode: 520,
+        body: JSON.stringify({message: `invalid Request:event.rawPath = ${event.rawPath},event.routeKey=${event.routeKey}`})
     }
     
 }
+
+

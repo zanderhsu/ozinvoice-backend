@@ -1,8 +1,6 @@
 const PDFDocument = require('pdfkit');
 const {Buffer} = require('node:buffer');
 
-const doc = require('pdfkit');
-
 function getNumberFormat(number,isMoney)
 {
   if(isNaN(number)) {
@@ -190,7 +188,7 @@ function addPayee(pdfDoc,payee)
   let strArray = [];
   for(var p in payee)
   {
-    if(payee[p] !=="" )
+    if(payee[p] !=="" || p=== "business_name" || p === "ABN" || p === 'address')
     {
       let txt = IfPropNameToShow(p)? (p+" : "):""
       txt += payee[p];
@@ -230,9 +228,12 @@ function addPayer(pdfDoc, payer)
     let strArray = []
     for(var p in payer)
     {
-      let txt = IfPropNameToShow(p)? (p+" : "):"";
-      txt += payer[p];
-      strArray.push(txt);
+      if(payer[p] !=="" /* p=== "business_name" || p === "ABN" || p === 'address'*/)
+      {
+        let txt = IfPropNameToShow(p)? (p+" : "):"";
+        txt += payer[p];
+        strArray.push(txt);
+      }
     }
 
     writeBlockText(pdfDoc, strArray,{
@@ -572,7 +573,7 @@ const getInvoicePDF = async (invoiceInfo)=> {
 
 const outputPDF = async (invoiceInfo) => {
   return new Promise((resolve, reject)=>{
-   
+      
       getInvoicePDF(invoiceInfo).then((pdfDoc)=>{
           const filename = "invoice.pdf";
           console.log("PDF size = "+pdfDoc.length);
@@ -591,7 +592,7 @@ const outputPDF = async (invoiceInfo) => {
             console.log("outputPDF's catch(): "+err)
                 reject( {
                     statusCode: 500,
-                    message:err
+                    body:{message:err}
                 })
         })
 
