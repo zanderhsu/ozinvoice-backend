@@ -2,11 +2,11 @@
 
 This is the source code of the backed for https://www.oz-invoice.com.au/ 
 
-It's acutally an AWS Lambda function(Node.JS runtime), which is the serverless  
+It's acutally an AWS Lambda function(Node.JS runtime), which is serverless  
 
 [DBClientWrapper.js]: the module for accessing AWS DynamoDB  
   
-[User.js]:    the module based on DBClientWrapper.js,which mainly handles requests from a loggined user, such as login, generating token, verify token, write data to DB, send out notify email etc.  
+[User.js]:    the module based on DBClientWrapper.js,which mainly handles requests from a loggined user, such as login, generating token, verify token, write data to DB, send out notification email etc.  
   
 [gen-invoice-pdf.js]:   the module for generating PDF using pdfkit library  
   
