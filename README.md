@@ -1,5 +1,8 @@
 # ozinvoice-backend
-This is source code for AWS Lambda function(Node.JS runtime),which is the serverless backend for OZ-Invoice.     
+
+This is the source code of the backed for https://www.oz-invoice.com.au/ 
+
+It's acutally an AWS Lambda function(Node.JS runtime), which is the serverless  
 
 [DBClientWrapper.js]: the module for accessing AWS DynamoDB  
   
