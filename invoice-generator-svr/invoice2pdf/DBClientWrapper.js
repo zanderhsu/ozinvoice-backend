@@ -144,17 +144,17 @@ DBClientWrapper.submitRequest = async(action,data)=>
                 }
                 break;
             case DBClientWrapper.ACTION_UPDATE_CLIENT:
-                {   /*paramObj ={user_name:xxx, email:xxx,client:{} }, as update need both keys*/
+                {   /*paramObj ={user_name:xxx, email:xxx,index:xxx,client:{} }, as update need both keys*/
                     let paramObj = data;
                     let clientStr = JSON.stringify(paramObj.client).replaceAll("\"", "'");
-                    params.Statement = `UPDATE "${USER_TABLE_NAME}" SET clients[${paramObj.client.client_id}]=${clientStr} WHERE user_name='${paramObj.user_name}' AND email='${paramObj.email}'`
+                    params.Statement = `UPDATE "${USER_TABLE_NAME}" SET clients[${paramObj.index}]=${clientStr} WHERE user_name='${paramObj.user_name}' AND email='${paramObj.email}'`
                 }
                 break;
             case DBClientWrapper.ACTION_UPDATE_PAYEE:
-                {   /*paramObj ={user_name:xxx, email:xxx,client:{} }, as update need both keys*/
+                {   /*paramObj ={user_name:xxx, email:xxx,index: client:{} }, as update need both keys*/
                     let paramObj = data;
                     let payeeStr = JSON.stringify(paramObj.payee).replaceAll("\"", "'");
-                    params.Statement = `UPDATE "${USER_TABLE_NAME}" SET payees[${paramObj.payee.payee_id}]=${payeeStr} WHERE user_name='${paramObj.user_name}' AND email='${paramObj.email}'`
+                    params.Statement = `UPDATE "${USER_TABLE_NAME}" SET payees[${paramObj.index}]=${payeeStr} WHERE user_name='${paramObj.user_name}' AND email='${paramObj.email}'`
                 }
                 break;    
             case DBClientWrapper.ACTION_GET_CLIENTS:
@@ -166,13 +166,13 @@ DBClientWrapper.submitRequest = async(action,data)=>
             case DBClientWrapper.ACTION_DELETE_CLIENT:
                 {
                     let whichClient = data;
-                    params.Statement = `UPDATE "${USER_TABLE_NAME}" REMOVE clients[${whichClient.client_id}] WHERE user_name='${whichClient.user_name}' AND email='${whichClient.email}'`
+                    params.Statement = `UPDATE "${USER_TABLE_NAME}" REMOVE clients[${whichClient.index}] WHERE user_name='${whichClient.user_name}' AND email='${whichClient.email}'`
                 }
                 break;
             case DBClientWrapper.ACTION_DELETE_PAYEE:
                 {
                     let whichPayee = data;
-                    params.Statement = `UPDATE "${USER_TABLE_NAME}" REMOVE payees[${whichPayee.payee_id}] WHERE user_name='${whichPayee.user_name}' AND email='${whichPayee.email}'`
+                    params.Statement = `UPDATE "${USER_TABLE_NAME}" REMOVE payees[${whichPayee.index}] WHERE user_name='${whichPayee.user_name}' AND email='${whichPayee.email}'`
                 }
                 break;
             

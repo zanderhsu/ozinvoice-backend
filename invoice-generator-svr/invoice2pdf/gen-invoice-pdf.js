@@ -579,20 +579,16 @@ const outputPDF = async (invoiceInfo) => {
           console.log("PDF size = "+pdfDoc.length);
           
           resolve( {
-                  statusCode: 200,            
-                  headers: {
-                      "content-type": "application/pdf",
-                      "content-disposition":`attachment; filename=${filename}`
-                  },
-                  body: pdfDoc.toString("base64"),
-                  isBase64Encoded: true
+                  success: true, 
+                  data: pdfDoc.toString("base64"),
+                  
               })
         })
         .catch((err)=>{
             console.log("outputPDF's catch(): "+err)
                 reject( {
-                    statusCode: 500,
-                    body:{message:err}
+                    success: false,
+                    message:err
                 })
         })
 

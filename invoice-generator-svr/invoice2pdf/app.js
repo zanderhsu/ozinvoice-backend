@@ -1,4 +1,12 @@
+// const axios = require('axios')
+// const url = 'http://checkip.amazonaws.com/';
+
 const PDFDoc = require('./gen-invoice-pdf.js');
+var createError = require('http-errors');
+const serverless = require('serverless-http');
+const express = require('express');
+const app = express();
+//var bodyParser = require('body-parser')
 const User = require("./User");
 const Utility = require('./utils.js');
 //const invoiceData = require('./invoiceData.js');
@@ -15,202 +23,237 @@ const Utility = require('./utils.js');
  * @returns {Object} object - API Gateway Lambda Proxy Output Format
  * 
  */
-function getRouteObj(event)
-{
-    let rawPath = event.rawPath;
-    let method = event.routeKey.split(" ")[0];
-    let theArray = rawPath.trim().split('/');
-    if(theArray[0].length == 0) theArray.shift();
-    if(theArray.length>1 &&theArray[theArray.length-1].length==0 )theArray.pop();
-    return {
-        method:method,
-        resource:theArray[0]?theArray[0]:"",
-        id:theArray[1]?theArray[1]:"",
-        subResource:theArray[2]?theArray[2]:"",
-        subID:theArray[3]?theArray[3]:""
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }));
+//app.use(express.static(path.join(__dirname, 'public')));
+const sendPDFResponse = (res,next,ret)=>{
+
+    if(ret.success === false)
+    {
+        next(createError(500,ret.message?ret.message:"unknown error"))
+    }
+    else
+    {
+        res.status(200)
+        res.set({
+            "content-disposition": "attachment; filename=MyInvoice.pdf",
+            "content-type": "application/pdf"
+        })
+        res.send(ret.data) 
     }
 }
-
- //const handler = async (event, context) => {
-  exports.lambdaHandler = async (event, context) => {
-    
-    console.log(`rawPath=${event.rawPath}`);
-    //console.log(`rawQueryString=${event.rawQueryString}`);
-    const routeObj = getRouteObj(event);
- 
-    console.log(`routeObj=${JSON.stringify(routeObj)}`);
-   
-    try{
-            let reqData = null;
-            let user_name = ""
-            let email = ""
-            if(event.body !== "")
-            {
-                reqData = JSON.parse(event.body);
-            }
-            //console.log(`event.body = ${event.body}`)
-            if(reqData.token !== undefined && reqData.token !== "")
-            {
-              let decryped = Utility.decodeTokenToData(reqData.token);
-              user_name = decryped.user_name;
-              email = decryped.email;
-
-              if(user_name === "" || email === "")
-              {
-                    return  {
-                        statusCode: 501,
-                        body:JSON.stringify({message:"Token Invalid"})
-                    }
-              }
-            }
-            
-           // console.log(`user_name=${user_name}, email=${email}`)
-            if(routeObj.method === "POST") 
-            {  
-                if(routeObj.resource === 'user')
-                {
-                    return await User.getUserByUserName(user_name);
-                }
-
-                if(routeObj.resource === 'getpdf')
-                {
-                    return await PDFDoc(reqData);
-                }
-                
-                if(routeObj.resource === 'login')
-                {   /*no token need in checkpassord*/
-                    return await User.checkPassword(reqData.user_name, reqData.password)
-                }
-                
-                if(routeObj.resource === 'loginbytoken')
-                {
-                    //to check user_name and email in DB
-                    return await User.checkPrimaryKey(user_name, email);
-                }
-
-                if(routeObj.resource === "sendvemail")
-                {
-                    return await User.sendVefificationEmail(user_name,reqData.email)
-                }
-
-                if(routeObj.resource === "verifyemail")
-                {
-                    return await User.verifyEmail(reqData.vetoken)
-                }
-                if(routeObj.resource === "sendtemppass")
-                {
-                    return await User.sendTempPassword(reqData.email);
-                }
-            }
-            
-            if(routeObj.method === "GET") 
-            {
-
-                if(routeObj.resource === "clients") 
-                {
-                    //get all clients   
-                    return await User.getClients(user_name)
-                }
-                     
-            }
-            
-            if(routeObj.method === "PUT") 
-            {
-                if(routeObj.resource === 'basics')
-                {
-                    return await User.updateBasics({
-                        user_name:user_name,
-                        email:email,
-                        basics:reqData.basics});
-                }
-
-                if(routeObj.resource === "newclient")
-                {
-                    return await User.addClient({
-                        user_name:user_name,
-                        email:email,
-                        client:reqData.client});
-                }
-
-                if(routeObj.resource === "newpayee")
-                {
-                    return await User.addPayee({
-                        user_name:user_name,
-                        email:email,
-                        payee:reqData.payee});
-                }
-                
-                if(routeObj.resource === "client")
-                {
-                    return await User.updateClient({
-                        user_name:user_name,
-                        email: email,
-                        client:reqData.client})
-                }
-
-                if(routeObj.resource === "payee")
-                {
-                    //updating a payee                            
-                    return await User.updatePayee({
-                        user_name:user_name,
-                        email:email,
-                        payee:reqData.payee })
-                }
-
-                if(routeObj.resource === 'newuser')
-                {
-                    return await User.addUser(reqData);
-                }
-
-                if(routeObj.resource === 'password')
-                {
-                    return await User.changePassword({...reqData,user_name:user_name,email:email})
-                }
-
-                if(routeObj.resource === 'email')
-                {
-                    return await User.changeEmail({
-                        user_name:user_name,
-                        email: email,
-                        new_email:reqData.new_email})
-                }
-            }
-            
-            if(routeObj.method === "DELETE")
-            {
-                if(routeObj.resource === 'client' && routeObj.id !== "")
-                {
-                    //delete a client
-                    return await User.deleteClient({
-                        user_name:user_name,
-                        email:email,
-                        client_id:routeObj.id})                    
-                }
-
-                if(routeObj.resource === 'payee' && routeObj.id !== "")
-                {
-                    //delete a client
-                    return await User.deletePayee({
-                        user_name:user_name,
-                        email:email,
-                        payee_id:routeObj.id})                    
-                }
-            }
-    }
-    catch(err)
+const sendResponse = (res,next,ret)=>
+{
+    if(ret.success === false)
     {
-        return  {
-            statusCode: 510,
-            body:JSON.stringify({message:"Promise Rejected:"+err})
+        next(createError(500,ret.message?ret.message:"unknown error"))
+    }
+    else
+    {
+        res.status(200).json(ret.data)
+    }
+}
+   
+
+app.use((req, res,next)=>{
+    let reqData = req.body;
+
+ //   console.log("New Request:%s %s %s", req.method, req.path, req.body)
+    //not all requests has a token in request.body
+    if((typeof reqData.token !== 'undefined') && reqData.token !== "")
+    {
+        let decryped = Utility.decodeTokenToData(reqData.token);
+        user_name = decryped.user_name;
+        email = decryped.email;
+
+        if(user_name === "" || email === "")
+        {
+            netx(createError(501,"Token Invalid"))
+        }
+        else
+        {
+            req.user_name = user_name
+            req.email = email
+            next()
         }
     }
-
-   
-    return {
-        statusCode: 520,
-        body: JSON.stringify({message: `invalid Request:event.rawPath = ${event.rawPath},event.routeKey=${event.routeKey}`})
+    else
+    {
+        next()
     }
     
-}
+})
+
+app.post('/user',async (req, res, next)=>{
+    
+    let ret = await User.getUserByUserName(req.user_name)
+    sendResponse(res,next,ret)
+})
+
+app.post('/getpdf',async (req, res, next)=>{
+    let ret = await PDFDoc(req.body)
+    sendPDFResponse(res,next,ret)
+
+})
+
+app.post('/login',async (req, res, next)=>{
+   /*no token need in checkpassord*/
+    let reqData = req.body;
+    let ret =  await User.checkPassword(reqData.user_name, reqData.password)
+    sendResponse(res,next,ret)
+})
 
 
+app.post('/loginbytoken',async (req, res, next)=>{
+    //to check user_name and email in DB
+    let ret = await User.checkPrimaryKey(req.user_name, req.email);
+    sendResponse(res,next,ret)
+})
+
+app.post("/sendvemail",async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.sendVefificationEmail(req.user_name,reqData.email)
+    sendResponse(res,next,ret)
+})
+
+app.post("/verifyemail",async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.verifyEmail(reqData.vetoken)
+    sendResponse(res,next,ret)
+})
+
+app.post("/sendtemppass",async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.sendTempPassword(reqData.email);
+    sendResponse(res,next,ret)
+})
+
+
+app.put('/basics',async (req, res, next)=>{
+
+    let reqData = req.body;
+
+    let ret = await User.updateBasics({
+        user_name:req.user_name,
+        email:req.email,
+        basics:reqData.basics});
+
+    sendResponse(res,next,ret)
+})
+
+app.put("/newclient",async (req, res, next)=>{
+
+    let reqData = req.body;
+
+    let ret = await User.addClient({
+        user_name:req.user_name,
+        email:req.email,
+        client:reqData.client});
+
+    sendResponse(res,next,ret)
+})
+
+app.put("/newpayee",async (req, res, next)=>{
+ 
+    let reqData = req.body;
+
+    let ret = await User.addPayee({
+        user_name:req.user_name,
+        email:req.email,
+        payee:reqData.payee});
+
+    sendResponse(res,next,ret)
+})
+
+
+         
+app.put("/client",async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.updateClient({
+                user_name:req.user_name,
+                email: req.email,
+                index: reqData.index,
+                client:reqData.client})
+    sendResponse(res,next,ret)
+
+})
+
+app.put("/payee",async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.updatePayee({
+                user_name:req.user_name,
+                email:req.email,
+                index: reqData.index,
+                payee:reqData.payee })
+    sendResponse(res,next,ret)
+})
+
+
+
+app.put('/newuser',async (req, res, next)=>{
+    let ret = await User.addUser(reqData);
+    sendResponse(res,next,ret)
+})
+
+app.put('/password',async (req, res, next)=>{
+    let reqData = req.body;
+    let ret = await User.changePassword({...reqData,user_name:req.user_name,email:req.email})
+    sendResponse(res,next,ret)
+})
+
+app.put('/email',async (req, res, next)=>{
+    let reqData = req.body;
+
+    let ret = await User.changeEmail({
+        user_name:req.user_name,
+        email: req.email,
+        new_email:reqData.new_email})
+        sendResponse(res,next,ret)
+})
+
+app.put('/',async (req, res, next)=>{
+    let ret = 
+    sendResponse(res,next,ret)
+})
+
+
+app.delete('/client/:clientIndex',async (req, res, next)=>{
+    let ret = await User.deleteClient({
+        user_name:req.user_name,
+        email:req.email,
+        index:req.params.clientIndex})
+
+    sendResponse(res,next,ret)
+})
+
+app.delete('/payee/:payeeIndex',async (req, res, next)=>{
+    let ret = await User.deletePayee({
+        user_name:req.user_name,
+        email:req.email,
+        index:req.params.payeeIndex})
+        
+    sendResponse(res,next,ret)
+})
+
+           
+// ============  Rount Not found  =================
+app.use(function(req, res, next) {
+    next(createError(404,"Invalid Path"));
+  })
+  
+  // ===========  Error handler  ==================
+app.use(function(err, req, res, next) {
+    // set locals, only providing error in development
+   // res.locals.message = err.message;
+   // res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+    // render the error page
+    res.status(err.status).json({message: err.message})
+})
+
+ /* exports.lambdaHandler = async (event, context) => {
+}*/
+
+exports.lambdaHandler = serverless(app);
+
+//module.exports = app

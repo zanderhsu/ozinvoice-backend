@@ -19,7 +19,6 @@ const userEmptyItem = {
         /*there will be payment method infor, invoices, plan type,bills,*/
     },
     payees: [{ //the information will turn up in the invoice payee section
-        payee_id:"", //same as payee index, 0, i.e. the first is the default payee. 
         business_name:"",
         abn:"",
         address: "",
@@ -30,7 +29,6 @@ const userEmptyItem = {
         account_number:""
       }],
     clients:[{ //Clients is a array
-        client_id:"",//same as client index
         business_name:"",
         abn:"",
         address: "",
@@ -45,15 +43,12 @@ const User = {}
 
 
 /*JsonObject: a data Object or {message:xxxx}*/
-function getHttpResponse(JsonObject,isSuccess)
+function formatResponse(JsonObject,isSuccess)
 {
-   return {
-        statusCode: isSuccess?200:500,            
-        headers: {
-            "content-type": "application/json",
-        },
-        body:JSON.stringify(JsonObject)
-     }
+     return {
+            success: isSuccess,
+            data:JsonObject
+        }
 }
 
 
@@ -82,11 +77,11 @@ User.sendTempPasswordToEmail = async(user_name,email,tempPwd)=>
             htmlBody:mailBody
           })
 
-          return getHttpResponse(result,true)
+          return formatResponse(result,true)
         }
         catch(error)
         {
-            return getHttpResponse({success:false, message:error},false)
+            return formatResponse({success:false, message:error},false)
         } 
 }
 
@@ -111,11 +106,11 @@ User.sendVefificationEmail = async(user_name,email)=>
             htmlBody:mailBody
           })
 
-          return getHttpResponse(result,result.success)
+          return formatResponse(result,result.success)
         }
         catch(error)
         {
-            return getHttpResponse({success:false, message:error},false)
+            return formatResponse({success:false, message:error},false)
         } 
 }
 
@@ -128,13 +123,13 @@ User.verifyEmail = async(vetoken)=>
        // console.log(`${unmarshall(ret.Items[0]).user_name} vs ${user_name}`)
         if(ret.Items.length === 0 || unmarshall(ret.Items[0]).email !== email)
         {
-            return getHttpResponse({success: false,message:"Wrong VETOKEN"},false);
+            return formatResponse({success: false,message:"Wrong VETOKEN"},false);
         }
         
         ret = await DBClientWrapper.submitRequest(DBClientWrapper.ACTION_SET_EMAIL_VERIFIED,{user_name:user_name,email:email,isVerified:true})
         let isSuccess = (ret.$metadata.httpStatusCode === 200)
 
-        return getHttpResponse({
+        return formatResponse({
             success: isSuccess,
             message:`Verifying Email ${isSuccess?"succeeded":"failed"}`,
             }
@@ -145,7 +140,7 @@ User.verifyEmail = async(vetoken)=>
     {
         console.log(err)
         let errorStr = `verifying Email failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success: false,message:errorStr},false);
+        return formatResponse({success: false,message:errorStr},false);
     }
 }
 /*
@@ -158,7 +153,7 @@ User.sendTempPassword = async(email)=>
         let ret = await DBClientWrapper.submitRequest(DBClientWrapper.ACTION_GET_SIMPLE_BY_EMAIL,email)
         if(ret.Items.length === 0)
         {
-            return getHttpResponse({
+            return formatResponse({
                 success: false,
                 message:`${email} hasn't been registered yet`}
                 ,false)
@@ -178,7 +173,7 @@ User.sendTempPassword = async(email)=>
 
         User.sendTempPasswordToEmail(item.user_name,email, data.temp_password.password)
         
-        return getHttpResponse({
+        return formatResponse({
             success: true,
             message:`The temporary password's been sent to ${email}. It'll expire in 10 mins, so please reset your new password as soon as possible after logging in`}
             ,true)
@@ -187,7 +182,7 @@ User.sendTempPassword = async(email)=>
     {
         console.log(err)
         let errorStr = `sendTempPassword failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success: false,message:errorStr},false);
+        return formatResponse({success: false,message:errorStr},false);
     }
 }
 /*
@@ -200,7 +195,7 @@ User.addUser = async (user)=>{
        // console.log("user="+JSON.stringify(user));
         if(await DBClientWrapper.IsEmailExist(user.email))
         {
-            return getHttpResponse({
+            return formatResponse({
                 success: false,
                 message:"Adding User failed because the email address has been used"}
                 ,false)
@@ -225,7 +220,7 @@ User.addUser = async (user)=>{
         let token = (isSuccess)?Utility.generateLoginToken(user.user_name,user.email):""
 
 
-         return getHttpResponse({
+         return formatResponse({
             success: isSuccess,
             message:`Adding User ${isSuccess?"succeeded":"failed"}`,
             token:token}
@@ -235,7 +230,7 @@ User.addUser = async (user)=>{
     {
         console.log(err)
         let errorStr = `Adding User failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success: false,message:errorStr},false);
+        return formatResponse({success: false,message:errorStr},false);
     }
 }
 
@@ -246,7 +241,7 @@ User.addPayee = async (paramObj)=>{
 
        let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-       return  getHttpResponse({
+       return  formatResponse({
             success: isSuccess,
             message:`Adding Payee ${isSuccess?"succeeded":"failed"}`}
             ,isSuccess)       
@@ -254,7 +249,7 @@ User.addPayee = async (paramObj)=>{
     catch(err)
     {
         let errorStr = `Adding Payee failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false, message:errorStr},false);
+        return formatResponse({success:false, message:errorStr},false);
     }
 }
 
@@ -264,6 +259,7 @@ paramObj:
 {
     user_name:
     email:
+    index;
     payee:{
 
     }
@@ -277,7 +273,7 @@ User.updatePayee = async (paramObj)=>{
 
        let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-       return  getHttpResponse({
+       return  formatResponse({
             success: isSuccess,
             message:`Updating Payee ${isSuccess?"succeeded":"failed"}`}
             ,isSuccess)       
@@ -285,7 +281,7 @@ User.updatePayee = async (paramObj)=>{
     catch(err)
     {
         let errorStr = `Updating Payee failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false, message:errorStr},false);
+        return formatResponse({success:false, message:errorStr},false);
     }
 }
 /*
@@ -303,7 +299,7 @@ User.updateBasics = async (paramObj)=>{
 
        let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-       return  getHttpResponse({
+       return  formatResponse({
             success: isSuccess,
             message:`Updating user Information ${isSuccess?"succeeded":"failed"}`}
             ,isSuccess)
@@ -327,7 +323,7 @@ User.updateBasics = async (paramObj)=>{
         "__type":"com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException"}}
         */
         let errorStr = `Updating user information failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false, message:errorStr},false);
+        return formatResponse({success:false, message:errorStr},false);
     }
 }
 
@@ -347,18 +343,18 @@ User.getUserByUserName =async (userName)=>{
         {
             let item = unmarshall(ret.Items[0])
             delete item.password;//don't let password returned.
-            return getHttpResponse(item,true);
+            return formatResponse(item,true);
         }
         else
         {
-            return getHttpResponse(null,true);
+            return formatResponse(null,true);
         }
     }
     catch(err)
     {
         let errorStr = `Getting user by name failed,reason:${err.name} fault:${err.$fault}`;
         console.log(errorStr)
-        return getHttpResponse(null,false);
+        return formatResponse(null,false);
     }
 }
 
@@ -376,7 +372,7 @@ User.checkPrimaryKey = async(user_name, email) =>{
             {
                 result.user_name = item.user_name
                 result.pass = true
-                return getHttpResponse(result, true)
+                return formatResponse(result, true)
             }
         }
     }
@@ -386,7 +382,7 @@ User.checkPrimaryKey = async(user_name, email) =>{
         console.log(errorStr)
     }
     
-    return getHttpResponse(result,false);
+    return formatResponse(result,false);
 }
 
 User.checkPassword = async(userName, password) => {
@@ -418,13 +414,13 @@ User.checkPassword = async(userName, password) => {
             }
         }
         
-        return getHttpResponse(passObject,passObject.pass);
+        return formatResponse(passObject,passObject.pass);
     }
     catch(err)
     {
         let errorStr = `Someting wrong in Checking password,reason:${err.name} fault:${err.$fault}`;
         console.log(errorStr)
-        return getHttpResponse(passObject,false)
+        return formatResponse(passObject,false)
     }
 }
 
@@ -448,7 +444,7 @@ User.changeEmail = async(dataObj) => {
         //no need to wait it here
         User.sendVefificationEmail(dataObj.user_name, dataObj.new_email)
         
-        return getHttpResponse({
+        return formatResponse({
                 success: true,
                 message:"Chaning email succeeded",
                 token:Utility.generateLoginToken(dataObj.user_name,dataObj.new_email)
@@ -460,7 +456,7 @@ User.changeEmail = async(dataObj) => {
     {
         let errorStr = `Someting wrong in changing email,reason:${err.name} fault:${err.$fault}`;
         console.log(errorStr)
-        return getHttpResponse({success:false, message:errorStr},false)
+        return formatResponse({success:false, message:errorStr},false)
     }
 }
 /*
@@ -479,10 +475,12 @@ User.changePassword = async(dataObj)=>{
 
     try
     {
-        let httpResponse = await User.checkPassword(dataObj.user_name,dataObj.current_password )
-        if( httpResponse.statusCode === 200)
+        let response = await User.checkPassword(dataObj.user_name,dataObj.current_password )
+
+        if( response.success )
         {
             //begin to change password
+            console.log("begin to change password")
             ret = await DBClientWrapper.submitRequest(DBClientWrapper.ACTION_SET_PASSWORD,{
                 user_name:dataObj.user_name,
                 new_password:dataObj.new_password,
@@ -490,7 +488,7 @@ User.changePassword = async(dataObj)=>{
 
             let isSuccess = (ret.$metadata.httpStatusCode === 200)
     
-            return  getHttpResponse({
+            return  formatResponse({
                 success: isSuccess,
                 message:`Setting new password ${isSuccess?"succeeded":"failed"}`} ,isSuccess)
         }
@@ -504,7 +502,7 @@ User.changePassword = async(dataObj)=>{
         let errorStr = `Changing password failed,reason:${err.name} fault:${err.$fault}`;
         result.message = errorStr;
     }
-    return  getHttpResponse(result,false)
+    return  formatResponse(result,false)
     
 }
 /*
@@ -540,14 +538,14 @@ User.addClient = async (paramObj)=>{
 
         let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-        return  getHttpResponse({
+        return  formatResponse({
             success: isSuccess,
             message:`Adding client ${isSuccess?"succeeded":"failed"}`} ,isSuccess)
     }       
     catch(err)
     {
         let errorStr = `Adding client failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false,message:errorStr},false);
+        return formatResponse({success:false,message:errorStr},false);
     }
     
 }
@@ -556,6 +554,7 @@ User.addClient = async (paramObj)=>{
 paramObj :{
     user_name:xxx
     email:xxx
+    index:index
     client:{}
 }
 */
@@ -566,14 +565,14 @@ User.updateClient = async (paramObj)=>{
 
         let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-        return  getHttpResponse({
+        return  formatResponse({
             success: isSuccess,
             message:`Updating client ${isSuccess?"succeeded":"failed"}`} ,isSuccess)
     }       
     catch(err)
     {
         let errorStr = `Updating client failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false,message:errorStr},false);
+        return formatResponse({success:false,message:errorStr},false);
     }
     
 }
@@ -582,7 +581,7 @@ User.updateClient = async (paramObj)=>{
 whichPayee :{
     user_name:
     email:
-    payee_id:
+    index:
 }
 */
 User.deletePayee =async (whichPayee)=>{
@@ -592,14 +591,14 @@ User.deletePayee =async (whichPayee)=>{
 
         let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-        return  getHttpResponse({
+        return  formatResponse({
             success: isSuccess,
             message:`Deleting payee ${isSuccess?"succeeded":"failed"}`} ,isSuccess)
     }       
     catch(err)
     {
         let errorStr = `Deleting payee failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false,message:errorStr},false);
+        return formatResponse({success:false,message:errorStr},false);
     }
 }
 
@@ -607,7 +606,7 @@ User.deletePayee =async (whichPayee)=>{
 whichClient :{
     user_name:
     email:
-    client_id:
+    index:
 }
 */
 User.deleteClient =async (whichClient)=>{
@@ -617,14 +616,14 @@ User.deleteClient =async (whichClient)=>{
 
         let isSuccess = (ret.$metadata.httpStatusCode === 200)
      
-        return  getHttpResponse({
+        return  formatResponse({
             success: isSuccess,
             message:`Deleting client ${isSuccess?"succeeded":"failed"}`} ,isSuccess)
     }       
     catch(err)
     {
         let errorStr = `Deleting client failed,reason:${err.name} fault:${err.$fault}`;
-        return getHttpResponse({success:false,message:errorStr},false);
+        return formatResponse({success:false,message:errorStr},false);
     }
 }
 
@@ -648,18 +647,18 @@ User.getClients = async(userName)=>{
             let item = unmarshall(ret.Items[0])
             console.log(JSON.stringify(item))
             
-            return getHttpResponse(item.clients,true);
+            return formatResponse(item.clients,true);
         }
         else
         {
-            return getHttpResponse([],true);
+            return formatResponse([],true);
         }
     }
     catch(err)
     {
         let errorStr = `getting client failed,reason:${err.name} fault:${err.$fault}`;
         console.log(errorStr)
-        return getHttpResponse([],false)
+        return formatResponse([],false)
     }
 }
 
