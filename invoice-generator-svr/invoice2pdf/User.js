@@ -92,7 +92,7 @@ User.sendVefificationEmail = async(user_name,email)=>
                 
           var token = Utility.generateLoginToken(user_name,email)
     
-          var vLink = CONSTVALUES.ROOT_URL+"?vetoken="+encodeURIComponent(token)
+          var vLink = CONSTVALUES.ROOT_URL+"/?vetoken="+encodeURIComponent(token)
           var mailBody = `<h3>Hi ${user_name},
           <br>
           <br>Please click the <a style="font-size:2em;color:purple;" href='${vLink}'>link</a> to verify your email address</h2>
@@ -156,7 +156,7 @@ User.sendTempPassword = async(email)=>
             return formatResponse({
                 success: false,
                 message:`${email} hasn't been registered yet`}
-                ,false)
+                ,true)//here set true so that browser show correct error message
         }
 
         let item = unmarshall(ret.Items[0])
