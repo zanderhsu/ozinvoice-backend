@@ -101,7 +101,7 @@ app.post('/getpdf', (req, res, next)=>{
 })
 
 app.post('/login', (req, res, next)=>{
-   /*no token need in checkpassord*/
+   /*token NOT needed in checkpassord*/
     let reqData = req.body;
     User.checkPassword(reqData.user_name, reqData.password)
     .then((ret)=>{
