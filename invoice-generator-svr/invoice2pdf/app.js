@@ -81,7 +81,7 @@ app.post('/user', (req, res, next)=>{
 })
 
 app.post('/getpdf', (req, res, next)=>{
-    PDFDoc(req.body)
+    PDFDoc.getPDFDoc(req.body)
     .then((ret)=>{
         if(ret.success === false)
         {
